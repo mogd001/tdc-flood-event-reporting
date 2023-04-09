@@ -17,11 +17,11 @@ unlink("outputs", recursive = TRUE)
 dir.create("./outputs")
 dir.create("./outputs/summary")
 
-default_start_date <- ymd("2023-03-31", tz =  "NZ")
+default_start_date <- ymd("2023-04-09", tz =  "NZ")
 default_start_dt <- as_datetime(default_start_date, tz = "NZ")
 
 from <- format(default_start_date, "%Y%m%d")
-to <- "20230402T180000" 
+to <- "Now" # "20230402T180000" 
 
 now <- format(Sys.time(), "%Y%m%dT%H%M%S")
 now_plot <- str_replace(now, "T", " ")
@@ -309,8 +309,8 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
     scale_x_datetime(breaks = seq(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE), by = "4 hours"), date_labels = "%Y%m%d-%H",
                      limits = c(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE))) +
     theme(axis.title.x = element_blank(), 
-          #axis.text.x = element_blank(), 
-          axis.text.x = element_text(angle = 45, hjust = 1),
+          axis.text.x = element_blank(), 
+          #axis.text.x = element_text(angle = 45, hjust = 1),
           axis.ticks.y.left = element_line(colour = "blue"),
           axis.title.y.left = element_text(colour = "blue"),
           axis.line.y.left = element_line(color = "blue"),
