@@ -17,11 +17,13 @@ unlink("outputs", recursive = TRUE)
 dir.create("./outputs")
 dir.create("./outputs/summary")
 
-default_start_date <- ymd("2023-04-09", tz =  "NZ")
+dt_frmt <- "%a %d %B %Y %I%p"
+
+default_start_date <- ymd("2023-05-05", tz =  "NZ")
 default_start_dt <- as_datetime(default_start_date, tz = "NZ")
 
 from <- format(default_start_date, "%Y%m%d")
-to <- "Now" # "20230402T180000" 
+to <- "20230508T0140000" # "20230402T180000" 
 
 now <- format(Sys.time(), "%Y%m%dT%H%M%S")
 now_plot <- str_replace(now, "T", " ")
@@ -261,27 +263,22 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
       arrange(desc(limit)) %>% 
       head(1)
   }
+  
+  coeff <- 10
+  
+  breaks <- seq(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE), by = "4 hours")
+  limits <- c(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE))
+  date_labels <- c(sapply(breaks, function(x) {
+    if (hour(x) == 0) {
+      format(x, "%a %d %B-%H") 
+    } else {
+      format(x, "%H")
+    }
+  }))
 
-  # Flow plot
-  p1 <- flows_site %>%
-    ggplot(aes(x = datetime, y = flow)) +
-    geom_line(size = 1.2, color = "red") +
-    geom_area(fill = "red", alpha = 0.4) +
-    geom_hline(yintercept = thresholds_plot$limit, linetype = "dashed", color = "black") +
-    geom_text(data = thresholds_plot, aes(x, limit, label = label, hjust = 0, vjust = 1.5), size = 4, color = "black") +
-    theme_bw() +
-    labs(x = "Datetime (NZDT)", y = "Flow (m3/s)", title = glue("{substring(site, 4)} Flow")) +
-    scale_x_datetime(breaks = seq(default_start_dt, max(rainfall_nearest$datetime, na.rm = TRUE), by = "4 hours"), date_labels = "%Y%m%d-%H", 
-                     limits = c(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE))) +
-    scale_y_continuous(limits = c(0, max(c(flows_site$flow, thresholds_plot$limit), na.rm = TRUE) * 1.05)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
-          axis.ticks.y.left = element_line(colour = "red"),
-          axis.title.y.left = element_text(colour = "red"),
-          axis.line.y.left = element_line(color = "red"),
-          axis.text.y.left = element_text(color = "red"))
-
+  # Rainfall plot
   total_rainfall <- round(sum(rainfall_nearest$rainfall_total), 0)
-
+  
   rainfall_annotations <- data.frame(
     xpos = c(min(rainfall_nearest$datetime, na.rm = TRUE) + (max(rainfall_nearest$datetime, na.rm = TRUE) - min(rainfall_nearest$datetime, na.rm = TRUE))/2),
     ypos = c(Inf),
@@ -290,24 +287,21 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
     vjustvar = c(1.6)
   )
   
-  coeff <- 10
-  
-  # Rainfall plot
-  p2 <- rainfall_nearest %>%
+  p1 <- rainfall_nearest %>%
     ggplot(aes(x = datetime - minutes(30), y = rainfall_total)) +
     geom_col(color = "blue", fill = "blue", alpha = 0.4) +
     geom_line(aes(x = datetime, y = cumsum((rainfall_total))/coeff), size = 0.8, color = "magenta", linetype = "twodash", inherit.aes = FALSE) +
+    geom_text(data = rainfall_annotations, aes(x = xpos, y = ypos, hjust = hjustvar, vjust = vjustvar, label = annotateText), size = 4.5, color = "magenta", alpha = 0.9) +
+    scale_x_datetime(breaks = breaks, date_labels = date_labels,
+                     limits = limits) +
     scale_y_continuous(
       name = "Hourly Rainfall (mm)",
-      limits = c(0, max(rainfall_nearest$rainfall_total) * 1.05),
+      limits = c(0, max(rainfall_nearest$rainfall_total) * 1.05 + 3),
       sec.axis = sec_axis(~.*coeff, name="Cumulative Rainfall (mm)"),
       expand = c(0, NA)
     ) + 
-    geom_text(data = rainfall_annotations, aes(x = xpos, y = ypos, hjust = hjustvar, vjust = vjustvar, label = annotateText), size = 4.5, color = "magenta", alpha = 0.9) +
-    theme_bw() +
     labs(x = "Datetime (NZDT)", title = glue("{substring(nearest_rainfall_site, 4)} Rainfall")) +
-    scale_x_datetime(breaks = seq(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE), by = "4 hours"), date_labels = "%Y%m%d-%H",
-                     limits = c(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE))) +
+    theme_bw() +
     theme(axis.title.x = element_blank(), 
           axis.text.x = element_blank(), 
           #axis.text.x = element_text(angle = 45, hjust = 1),
@@ -319,6 +313,24 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
           axis.title.y.right = element_text(colour = "magenta", angle = 90),
           axis.line.y.right = element_line(color = "magenta"),
           axis.text.y.right = element_text(color = "magenta"))
+  
+  # Flow plot
+  p2 <- flows_site %>%
+    ggplot(aes(x = datetime, y = flow)) +
+    geom_line(size = 1.2, color = "red") +
+    geom_area(fill = "red", alpha = 0.4) +
+    geom_hline(yintercept = thresholds_plot$limit, linetype = "dashed", color = "black") +
+    geom_text(data = thresholds_plot, aes(x, limit, label = label, hjust = 0, vjust = 1.5), size = 4, color = "black") +
+    scale_x_datetime(breaks = breaks, date_labels = date_labels, 
+                     limits = limits) +
+    scale_y_continuous(limits = c(0, max(c(flows_site$flow, thresholds_plot$limit), na.rm = TRUE) * 1.05)) +
+    theme_bw() +
+    labs(x = "Datetime (NZDT)", y = "Flow (m3/s)", title = glue("{substring(site, 4)} Flow")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          axis.ticks.y.left = element_line(colour = "red"),
+          axis.title.y.left = element_text(colour = "red"),
+          axis.line.y.left = element_line(color = "red"),
+          axis.text.y.left = element_text(color = "red"))
 
   print(catchment)
   if (catchment == "Nelson") {
@@ -329,7 +341,7 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
       theme(plot.background = element_rect(fill = NA, colour = "#273691", size = 3))
   }
 
-  p <- (p2 / p1) +
+  p <- (p1 / p2) +
     plot_annotation(theme = theme_border)
 
   if (!file.exists(glue("outputs/summary/{catchment}"))) {
