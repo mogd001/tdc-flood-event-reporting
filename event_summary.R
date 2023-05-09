@@ -22,8 +22,10 @@ dt_frmt <- "%a %d %B %Y %I%p"
 default_start_date <- ymd("2023-05-05", tz =  "NZ")
 default_start_dt <- as_datetime(default_start_date, tz = "NZ")
 
+# TODO UPDATE
 from <- format(default_start_date, "%Y%m%d")
-to <- "20230508T0140000" # "20230402T180000" 
+to <- "20230510T120000" # "20230402T180000" 
+xaxis_breaks <- 6 # Breaks in hours
 
 now <- format(Sys.time(), "%Y%m%dT%H%M%S")
 now_plot <- str_replace(now, "T", " ")
@@ -48,7 +50,7 @@ sites <- get_sites() %>%
   st_join(catchments, join = st_intersects) %>%
   replace_na(list(catchment = "Motueka"))
 
-flow_thresholds <- read_csv("data/20230402_flow_thresholds.csv")
+flow_thresholds <- read_csv("data/20230510_flow_thresholds.csv")
 
 # Rainfall
 rainfall_sites <- tibble(site = unique(rainfall$site))
@@ -266,7 +268,7 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
   
   coeff <- 10
   
-  breaks <- seq(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE), by = "4 hours")
+  breaks <- seq(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE), by = glue("{xaxis_breaks} hours"))
   limits <- c(default_start_dt, max(rainfall_nearest$datetime, na.rm =TRUE))
   date_labels <- c(sapply(breaks, function(x) {
     if (hour(x) == 0) {
@@ -319,8 +321,8 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
     ggplot(aes(x = datetime, y = flow)) +
     geom_line(size = 1.2, color = "red") +
     geom_area(fill = "red", alpha = 0.4) +
-    geom_hline(yintercept = thresholds_plot$limit, linetype = "dashed", color = "black") +
-    geom_text(data = thresholds_plot, aes(x, limit, label = label, hjust = 0, vjust = 1.5), size = 4, color = "black") +
+    {if(catchment != "Nelson")geom_hline(yintercept = thresholds_plot$limit, linetype = "dashed", color = "black")} + 
+    {if(catchment != "Nelson")geom_text(data = thresholds_plot, aes(x, limit, label = label, hjust = 0, vjust = 1.5), size = 4, color = "black")} +
     scale_x_datetime(breaks = breaks, date_labels = date_labels, 
                      limits = limits) +
     scale_y_continuous(limits = c(0, max(c(flows_site$flow, thresholds_plot$limit), na.rm = TRUE) * 1.05)) +
