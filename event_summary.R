@@ -285,7 +285,7 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
     xpos = c(min(rainfall_nearest$datetime, na.rm = TRUE) + (max(rainfall_nearest$datetime, na.rm = TRUE) - min(rainfall_nearest$datetime, na.rm = TRUE))/2),
     ypos = c(Inf),
     annotateText = c(glue("Total rainfall: {total_rainfall} mm")),
-    hjustvar = c(-0.3),
+    hjustvar = c(0.1),
     vjustvar = c(1.6)
   )
   
@@ -298,7 +298,7 @@ plot_event_flow_for_site <- function(site, rainfall_site = NA) {
                      limits = limits) +
     scale_y_continuous(
       name = "Hourly Rainfall (mm)",
-      limits = c(0, max(rainfall_nearest$rainfall_total) * 1.05 + 3),
+      limits = c(0, ceiling(max(max(rainfall_nearest$rainfall_total) * 1.05 + 3, sum(rainfall_nearest$rainfall_total)/10 + 1))),
       sec.axis = sec_axis(~.*coeff, name="Cumulative Rainfall (mm)"),
       expand = c(0, NA)
     ) + 
